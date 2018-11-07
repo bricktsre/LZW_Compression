@@ -21,8 +21,8 @@ import java.util.Scanner;
 
 public class LZWmod {
     private static final int R = 256;        // number of input chars
-    private static final int L = 4096;       // number of codewords = 2^W
-    private static final int W = 12;         // codeword width
+    private static int L = 512;       // number of codewords = 2^W
+    private static int W = 9;         // codeword width
     //private static int buffer =0;
     //private static int blen = 0;
     //private static BufferedReader scan;
@@ -30,10 +30,11 @@ public class LZWmod {
     private static BinaryIn infile;
     private static BinaryOut outfile;
 
-    public static void compress() throws IOException { 
-        RTrie<Integer> st = new RTrie<Integer>();
-        for (int i = 0; i < R; i++)
-            st.put(new StringBuilder("" + (char) i), i);
+    public static void compress(boolean reset) throws IOException { 
+    	if(reset) outfile.write(1, 1); //BinarayStdOut.write(1,1);
+    	else outfile.write(0, 1);		//BinarayStdOut.write(0,1);
+    	
+    	RTrie<Integer> st = initializeCodebook();
         int code = R+1;  // R is codeword for EOF
         
         StringBuilder input = new StringBuilder();
@@ -41,9 +42,16 @@ public class LZWmod {
         while (!infile.isEmpty()) {
             input = nextStringBuilder(input,st);
             StringBuilder s = st.longestPrefixOf(input);
-        	//write(st.get(s));
+        	
+            //write(st.get(s));
         	//BinaryStdOut.write(st.get(s), W);      // Print s's encoding.
             outfile.write(st.get(s),W);
+           
+            if(code==L && W<16) resizeCodebook();
+            if(reset && W==16 && code ==L) {
+            	st = initializeCodebook();
+            	code=R+1;
+            }
             int t = s.length();
             if (t < input.length() && code < L)    // Add s to symbol table.
                 st.put(input, code++);
@@ -72,8 +80,24 @@ public class LZWmod {
     	return input;
     }
 
+    private static void resizeCodebook() {
+    	if(W==16) return;
+    	else {
+    		W++;
+    		L=L*2;
+    	}
+    }
+    
+    private static RTrie<Integer> initializeCodebook(){
+    	RTrie<Integer> st = new RTrie<Integer>();
+    	for (int i = 0; i < R; i++)
+            st.put(new StringBuilder("" + (char) i), i);
+    	return st;
+    }
+    
     public static void expand() {
-        String[] st = new String[L];
+        boolean reset = infile.readInt(1)==1; //BinarayStdIn.readInt(1);
+    	String[] st = new String[65536];
         int i; // next available codeword value
 
         // initialize symbol table with all 1-character strings
@@ -81,19 +105,26 @@ public class LZWmod {
             st[i] = "" + (char) i;
         st[i++] = "";                        // (unused) lookahead for EOF
 
-        int codeword = BinaryStdIn.readInt(W);
+        int codeword = 	infile.readInt(W);	//BinaryStdIn.readInt(W);
         String val = st[codeword];
 
         while (true) {
-            BinaryStdOut.write(val);
-            codeword = BinaryStdIn.readInt(W);
+            outfile.write(val);		//BinaryStdOut.write(val);
+            if(i==L) resizeCodebook();
+            if(reset && W==16 && i ==L) {
+            	st = new String[65536];
+                for (i = 0; i < R; i++)
+                    st[i] = "" + (char) i;
+                st[i++] = "";
+            }
+            codeword = 	infile.readInt(W);	//BinaryStdIn.readInt(W);
             if (codeword == R) break;
             String s = st[codeword];
             if (i == codeword) s = val + val.charAt(0);   // special case hack
             if (i < L) st[i++] = val + s.charAt(0);
             val = s;
         }
-        BinaryStdOut.close();
+        outfile.close();		//BinaryStdOut.close();
     }
 
     /*private static void write(int a) throws IOException {
@@ -121,7 +152,7 @@ public class LZWmod {
     }*/
     
     public static void main(String[] args) throws IOException {
-    	/*if      (args[0].equals("-")) compress();
+    	/*if      (args[0].equals("-")) compress(args[1].equals("r"));
         else if (args[0].equals("+")) expand();
         else throw new RuntimeException("Illegal command line argument");
         */
@@ -133,9 +164,13 @@ public class LZWmod {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}*/
-        infile = new BinaryIn("frosty.jpg");
-    	outfile = new BinaryOut("frosty.lzwm");
-        compress();
+        //infile = new BinaryIn("wacky.bmp");
+    	//outfile = new BinaryOut("wacky.lzwm");
+        //compress(true);
+        
+       infile = new BinaryIn("wacky.lzwm");
+       outfile = new BinaryOut("wacky2.bmp");
+        expand();
     }
 
 }
