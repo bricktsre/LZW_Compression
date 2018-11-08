@@ -1,12 +1,5 @@
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import java.util.Scanner;
 
 /*************************************************************************
  *  Compilation:  javac LZW.java
@@ -21,48 +14,61 @@ import java.util.Scanner;
 
 public class LZWmod {
     private static final int R = 256;        // number of input chars
-    private static int L = 512;       // number of codewords = 2^W
-    private static int W = 9;         // codeword width
+    private static int L = 512;       		 // number of codewords = 2^W
+    private static int W = 9;        		 // codeword width
 
+    /**
+     * LZW compression with variable length codewords and dictionary resetting
+     * 
+     * @param reset				Should the codebook be reset upon reaching maximum capacity
+     * @throws IOException		BinaryStdIn cannot read in or BinaryStdOut write out
+     */
     public static void compress(boolean reset) throws IOException { 
-    	if(reset) BinaryStdOut.write(1,1);
-    	else BinaryStdOut.write(0,1);
+    	if(reset) BinaryStdOut.write(1,1);					//Writes one to the file if the dictionary is to be reset upon filing
+    	else BinaryStdOut.write(0,1);						//Writes zero if it is not to be reset
     	
-    	RTrie<Integer> st = initializeCodebook();
-        int code = R+1;  // R is codeword for EOF
+    	RTrie<Integer> st = initializeCodebook();			//Radix Trie storing the codebook
+        int code = R+1;  									// R is codeword for EOF	
         
         StringBuilder input = new StringBuilder();
         input.append(BinaryStdIn.readChar());
-        while (input.length() > 0) {
-            input = nextStringBuilder(input,st);
+        while (input.length() > 0) {						//While there still is input left
+            input = nextStringBuilder(input,st);			//The next input with a longest prefix one less than it
             StringBuilder s = st.longestPrefixOf(input);
         	
-            BinaryStdOut.write(st.get(s), W);      // Print s's encoding.
+            BinaryStdOut.write(st.get(s), W);      			// Print the prefix's encoding.
            
-            if(code==L && W<16) resizeCodebook();
-            if(reset && W==16 && code ==L) {
+            if(code==L && W<16) resizeCodebook();			//Resize the codebook if reached maximum codewords for codeword width
+            if(reset && W==16 && code ==L) {				//Reset the codebook
             	st = initializeCodebook();
             	code=R+1;
             }
             int t = s.length();
-            if (t < input.length() && code < L)    // Add s to symbol table.
+            if (t < input.length() && code < L)    			// Add input to codebook
                 st.put(input, code++);
-            if(input.length()==s.length()) input.delete(0, input.length()); 
-            else input.delete(0, input.length()-1);            // Scan past s in input.
+            if(input.length()==s.length()) input.delete(0, input.length()); 	//last input of the file
+            else input.delete(0, input.length()-1);            					//Delete all but the last character of the input	
         }
-        BinaryStdOut.write(R, W);
+        BinaryStdOut.write(R, W);			//Write EOF signal
         BinaryStdOut.close();
     } 
     
+    /**
+     * Returns the next stringbuilder with a longest prefix one less than it
+     * 
+     * @param input		current input from the file
+     * @param st		codebook
+     * @return			stringbuilder
+     */
     private static StringBuilder nextStringBuilder(StringBuilder input, RTrie<Integer> st) {
     	StringBuilder s = input;
         boolean first = true;
     	while(s.length()==input.length()) {
-    		if(!first) {	
+    		if(!first) {											//First time around do not add a character
     			try {
-    					input.append(BinaryStdIn.readChar()); //input.append(infile.readChar());
+    					input.append(BinaryStdIn.readChar()); 		//Read in another character
     			}catch(NoSuchElementException e) {
-    				return input;
+    				return input;									//EOF
     			}
     		}else
     			first=false;
@@ -71,6 +77,10 @@ public class LZWmod {
     	return input;
     }
 
+    /**
+     * Increases the width of the codewords by one
+     * Doubles the number of available codewords
+     */
     private static void resizeCodebook() {
     	if(W==16) return;
     	else {
@@ -79,6 +89,11 @@ public class LZWmod {
     	}
     }
     
+    /**
+     * Initializes a RadixTrie with extended ASCII
+     * 
+     * @return	the nex RadixTrie
+     */
     private static RTrie<Integer> initializeCodebook(){
     	RTrie<Integer> st = new RTrie<Integer>();
     	for (int i = 0; i < R; i++)
@@ -86,8 +101,11 @@ public class LZWmod {
     	return st;
     }
     
+    /**
+     * Decompresses the file
+     */
     public static void expand() {
-        boolean reset = BinaryStdIn.readInt(1)==1;
+        boolean reset = BinaryStdIn.readInt(1)==1;		//Check if codebook should be reset or not
     	String[] st = new String[65536];
         int i; // next available codeword value
 
@@ -101,8 +119,8 @@ public class LZWmod {
 
         while (true) {
             BinaryStdOut.write(val);
-            if(i==L) resizeCodebook();
-            if(reset && W==16 && i ==L) {
+            if(i==L) resizeCodebook();		//Resize codebook
+            if(reset && W==16 && i ==L) {	//Reset codebook
             	st = new String[65536];
                 for (i = 0; i < R; i++)
                     st[i] = "" + (char) i;
