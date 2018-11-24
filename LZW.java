@@ -1,3 +1,4 @@
+
 /*************************************************************************
  *  Compilation:  javac LZW.java
  *  Execution:    java LZW - < input.txt   (compress)
@@ -62,8 +63,8 @@ public class LZW {
 
     public static void main(String[] args) {
         if      (args[0].equals("-")) compress();
-        else if (args[0].equals("+")) expand();
-        else throw new RuntimeException("Illegal command line argument");
+       else if (args[0].equals("+")) expand();
+        else throw new RuntimeException("Illegal command line argument");	
     }
 
 }
